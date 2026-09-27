@@ -22,6 +22,11 @@ let package = Package(
             name: "StackGeometryTests",
             dependencies: ["StackGeometry"],
             swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .testTarget(
+            name: "SCEdgeStackTests",
+            dependencies: ["SCEdgeStack"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]
 )

@@ -1,0 +1,62 @@
+#if os(iOS)
+import SwiftUI
+import StackGeometry
+
+extension EnvironmentValues {
+    /// Hands a stack's engine to its own children, and to nothing nested deeper.
+    @Entry var stackItemEngine: StackEngine?
+}
+
+/// A container that stacks children off the edges of a root view.
+///
+/// ```swift
+/// EdgeStack {
+///     MapView()
+/// } children: {
+///     MenuView()
+///         .stackEdge(.leading)
+///         .stackID(Panel.menu)
+/// }
+/// .stackLayout(ParallaxStackLayout(), for: .leading)
+/// ```
+///
+/// Order within an edge is declaration order; index 0 sits adjacent to the root.
+@MainActor
+public struct EdgeStack<Root: View, Children: View>: View {
+
+    private let root: Root
+    private let children: Children
+
+    @Environment(\.stackConfiguration) private var configuration
+    @Environment(\.layoutDirection) private var layoutDirection
+
+    @State private var owned = StackEngine()
+
+    public init(
+        @ViewBuilder content: () -> Root,
+        @ViewBuilder children: () -> Children
+    ) {
+        self.root = content()
+        self.children = children()
+    }
+
+    public init(@ViewBuilder content: () -> Root) where Children == EmptyView {
+        self.root = content()
+        self.children = EmptyView()
+    }
+
+    public var body: some View {
+        let engine = owned
+        let direction: StackLayoutDirection = layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
+
+        StackScrollHost(
+            engine: engine,
+            configuration: configuration,
+            layoutDirection: direction,
+            content: StackContentLayer(engine: engine, root: root, children: children)
+                .environment(\.layoutDirection, layoutDirection)
+        )
+        .ignoresSafeArea()
+    }
+}
+#endif
