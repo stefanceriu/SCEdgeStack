@@ -161,10 +161,15 @@ private struct LabRoot: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: arrow).font(.largeTitle)
+            // Text rather than Image, so the arrow scales down with the label.
+            Text(Image(systemName: arrow)).font(.largeTitle)
             Text("Drag from the \(String(describing: edge)) edge")
                 .font(.headline)
         }
+        // Shrinks to fit as the resizing layout squeezes the root.
+        .lineLimit(1)
+        .minimumScaleFactor(0.2)
+        .padding(8)
         .foregroundStyle(.white)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(LinearGradient(colors: [.mint, .teal], startPoint: .topLeading, endPoint: .bottomTrailing))
