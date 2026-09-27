@@ -94,8 +94,9 @@ public struct ResizingStackLayout: StackLayout {
     }
 }
 
-/// Children are arranged from the container bounds towards the root, so the
-/// last declared child is the first one seen.
+/// Children are arranged from the container bounds towards the root: the first
+/// declared child ends up against the bounds, and each next one emerges from
+/// beneath it.
 public struct ReversedStackLayout: StackLayout {
     public var stacksAboveRoot: Bool
 
@@ -123,12 +124,11 @@ public struct ReversedStackLayout: StackLayout {
     public func frame(_ ctx: StackItemContext, finalFrame: CGRect) -> CGRect {
         var frame = stretchedAcrossCrossAxis(finalFrame, ctx)
         let offset = ctx.contentOffset
-        let first = ctx.siblingSizes[0]
         switch ctx.edge {
         case .top:
-            frame.origin.y = min(-first.height, finalFrame.minY + ctx.totalExtent + offset.y)
+            frame.origin.y = min(-ctx.itemSize.height, finalFrame.minY + ctx.totalExtent + offset.y)
         case .left:
-            frame.origin.x = min(-first.width, finalFrame.minX + ctx.totalExtent + offset.x)
+            frame.origin.x = min(-ctx.itemSize.width, finalFrame.minX + ctx.totalExtent + offset.x)
         case .bottom:
             frame.origin.y = max(ctx.containerSize.height, finalFrame.minY - (ctx.totalExtent - offset.y))
         case .right:

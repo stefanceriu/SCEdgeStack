@@ -152,6 +152,17 @@ struct LayoutTests {
         }
     }
 
+    @Test(arguments: StackPhysicalEdge.allCases)
+    func reversedLandsOnItsFinalFramesWithUnequalSizes(edge: StackPhysicalEdge) {
+        let sizes = [80, 120, 60].map { Fixture.child(CGFloat($0), on: edge) }
+        let full = edge.axis.point(260 * edge.unfoldingSign)
+        let final = finalFrames(ReversedStackLayout(), edge, sizes: sizes)
+
+        for (index, frame) in frames(ReversedStackLayout(), edge, sizes: sizes, offset: full).enumerated() {
+            #expect(frame.origin == final[index].origin)
+        }
+    }
+
     @Test func contextDerivesExtentsFromSiblingSizes() {
         let sizes = [80, 120, 60].map { Fixture.child(CGFloat($0), on: .left) }
         let ctx = StackItemContext(
