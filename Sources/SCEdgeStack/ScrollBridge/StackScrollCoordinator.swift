@@ -2,19 +2,31 @@
 import UIKit
 import StackGeometry
 
+/// What `StackProxy` needs from the scroll view without knowing its type.
+@MainActor
+protocol StackScrollControlling: AnyObject {
+    var contentOffset: CGPoint { get }
+    var isAnimating: Bool { get }
+    func specChanged()
+    func navigate(to offset: CGPoint, step: StackNavigationStep, animation: StackAnimation) async -> Bool
+    func stopAnimation()
+}
+
 /// The only object that touches the scroll view.
 ///
 /// It is the sole owner of `contentInset`, which it applies with the delegate
-/// detached and the offset restored -- and **never** while tracking or
-/// decelerating: mid-drag inset mutation leaves the scroll stuck between pages.
+/// detached and the offset restored -- and **never** while tracking,
+/// decelerating or animating: mid-drag inset mutation leaves the scroll stuck
+/// between pages.
 @MainActor
-final class StackScrollCoordinator: NSObject, UIScrollViewDelegate {
+final class StackScrollCoordinator: NSObject, UIScrollViewDelegate, StackScrollControlling {
 
     /// Finite, so UIKit cannot clamp the offset while the stack re-measures.
     /// `CGFLOAT_MAX` would make it clamp to nonsense.
     private static let sentinelInset = CGFloat.greatestFiniteMagnitude / 4
 
     let engine: StackEngine
+    let animator = OffsetAnimator()
 
     weak var scrollView: PassthroughScrollView?
     var hostingController: UIViewController?
@@ -22,6 +34,7 @@ final class StackScrollCoordinator: NSObject, UIScrollViewDelegate {
     private var appliedInsets: StackInsets?
     private var pendingStep: StackNavigationStep?
     private var restoreTarget: (key: StackItemKey, fraction: Double)?
+    private var isNavigating = false
 
     init(engine: StackEngine) {
         self.engine = engine
@@ -29,16 +42,19 @@ final class StackScrollCoordinator: NSObject, UIScrollViewDelegate {
         engine.scrollController = self
     }
 
+    var contentOffset: CGPoint { scrollView?.contentOffset ?? .zero }
+    var isAnimating: Bool { animator.isAnimating }
+
     // MARK: - Insets
 
     /// The regime the stack should be in right now.
     private var regime: StackInsetRegime {
-        engine.liveRegime
+        isNavigating ? .unconstrained : engine.liveRegime
     }
 
     private func updateInsets() {
         guard let scrollView else { return }
-        guard !scrollView.isTracking, !scrollView.isDecelerating else { return }
+        guard !scrollView.isTracking, !scrollView.isDecelerating, !animator.isAnimating else { return }
         apply(engine.insets(for: regime).insets)
     }
 
@@ -85,7 +101,7 @@ final class StackScrollCoordinator: NSObject, UIScrollViewDelegate {
     /// Setting a smaller inset does not move the offset, so a stack whose
     /// unfolded child was removed would rest beyond its own range.
     private func clampIntoRange() {
-        guard let scrollView, !scrollView.isTracking else { return }
+        guard let scrollView, !scrollView.isTracking, !animator.isAnimating else { return }
         let range = engine.insets(for: .unconstrained).insets
         let offset = scrollView.contentOffset
         let clamped = CGPoint(
@@ -110,6 +126,35 @@ final class StackScrollCoordinator: NSObject, UIScrollViewDelegate {
         )
         scrollView.delegate = delegate
         appliedInsets = nil
+    }
+
+    // MARK: - Programmatic navigation
+
+    /// Animates to `offset` and, if it gets there, reports `step` the way a
+    /// settled drag would.
+    func navigate(to offset: CGPoint, step: StackNavigationStep, animation: StackAnimation) async -> Bool {
+        guard let scrollView else { return false }
+        if animator.isAnimating && engine.configuration.blocksInteractionWhileAnimating { return false }
+
+        isNavigating = true
+        // Widen the range first, or the target offset is clamped away.
+        apply(engine.insets(for: .unconstrained).insets)
+
+        let finished = await animator.animate(
+            scrollView, to: offset, easing: animation.curve, duration: animation.duration
+        )
+
+        isNavigating = false
+        updateInsets()
+        if finished {
+            pendingStep = step
+            reportStep()
+        }
+        return finished
+    }
+
+    func stopAnimation() {
+        animator.stop(finished: false)
     }
 
     // MARK: - UIScrollViewDelegate

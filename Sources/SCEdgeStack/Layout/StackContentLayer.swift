@@ -36,6 +36,11 @@ struct StackContentLayer<Root: View, Children: View>: View {
         .environment(\.layoutDirection, .leftToRight)
         // Set above every child, so it survives their resolution.
         .environment(\.stackItemEngine, engine)
+        // A stack nested in a child makes its own engine rather than taking this one.
+        .environment(\.stackEngineProvider, nil)
+        .accessibilityAction(.escape) {
+            Task { await StackProxy(engine: engine).fold() }
+        }
     }
 }
 #endif

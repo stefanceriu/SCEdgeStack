@@ -42,6 +42,35 @@ struct InsetRegimeTests {
         #expect(harness.insets.left == 350)
     }
 
+    /// The hard rule: insets are never written while the scroll view owns the
+    /// offset. Mid-flight mutation leaves the scroll stuck between pages.
+    @Test func insetsAreNotWrittenWhileAnimating() async {
+        let harness = Bridge.harness(extents: [200], steps: [[.init(0.5)]])
+
+        harness.scrollView.contentOffset = CGPoint(x: -50, y: 0)
+        harness.coordinator.scrollViewDidScroll(harness.scrollView)
+        harness.coordinator.scrollViewDidEndDragging(harness.scrollView, willDecelerate: false)
+        let settled = harness.insets
+
+        let task = Task { @MainActor in
+            await harness.coordinator.navigate(
+                to: CGPoint(x: -200, y: 0), step: .full, animation: StackAnimation(curve: .linear, duration: 5)
+            )
+        }
+        try? await Task.sleep(for: .milliseconds(120))
+
+        // Mid-animation the range is deliberately open; a settle must not
+        // narrow it back under the animation's feet.
+        let midFlight = harness.insets
+        harness.coordinator.scrollViewDidEndDecelerating(harness.scrollView)
+        #expect(harness.insets == midFlight)
+        #expect(midFlight.left == 200)
+        #expect(settled.left == 100)
+
+        task.cancel()
+        _ = await task.value
+    }
+
     @Test func aScrollTickNeverWritesInsets() {
         let harness = Bridge.harness(extents: [200, 300], steps: [[.init(0.5)], []])
         let before = harness.insets

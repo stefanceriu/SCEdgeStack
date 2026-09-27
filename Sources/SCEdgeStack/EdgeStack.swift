@@ -3,6 +3,8 @@ import SwiftUI
 import StackGeometry
 
 extension EnvironmentValues {
+    /// Hands a `StackReader`'s engine to the `EdgeStack` inside it.
+    @Entry var stackEngineProvider: StackEngine?
     /// Hands a stack's engine to its own children, and to nothing nested deeper.
     @Entry var stackItemEngine: StackEngine?
 }
@@ -29,6 +31,7 @@ public struct EdgeStack<Root: View, Children: View>: View {
 
     @Environment(\.stackConfiguration) private var configuration
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.stackEngineProvider) private var provided
 
     @State private var owned = StackEngine()
 
@@ -46,7 +49,7 @@ public struct EdgeStack<Root: View, Children: View>: View {
     }
 
     public var body: some View {
-        let engine = owned
+        let engine = provided ?? owned
         let direction: StackLayoutDirection = layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
 
         // The stack's geometry lives in a safe-area-free space, so the host

@@ -15,6 +15,8 @@ public struct StackConfiguration {
     public var pagingEnabled = true
     public var continuousNavigationEnabled = false
     public var navigationConstraints: StackNavigationConstraints = .all
+    public var animation = StackAnimation()
+    public var blocksInteractionWhileAnimating = false
     public var decelerationRate: UIScrollView.DecelerationRate = .fast
     public var dragActivation: StackDragActivation = .anywhere
     public var simultaneousGestures = false
@@ -53,6 +55,16 @@ public extension View {
     /// Which directions of travel the navigation steps constrain.
     func stackNavigationConstraints(_ constraints: StackNavigationConstraints) -> some View {
         transformEnvironment(\.stackConfiguration) { $0.navigationConstraints = constraints }
+    }
+
+    /// The curve and duration used by `StackProxy`.
+    func stackAnimation(_ animation: StackAnimation) -> some View {
+        transformEnvironment(\.stackConfiguration) { $0.animation = animation }
+    }
+
+    /// Ignore programmatic navigation requests while one is already running.
+    func stackBlocksInteractionWhileAnimating(_ blocks: Bool) -> some View {
+        transformEnvironment(\.stackConfiguration) { $0.blocksInteractionWhileAnimating = blocks }
     }
 
     func stackDecelerationRate(_ rate: UIScrollView.DecelerationRate) -> some View {
