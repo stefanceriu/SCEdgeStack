@@ -1,0 +1,8 @@
+SCEdgeStack
+
+Sources/StackGeometry/Easing/StackEasing.swift is a Swift port of easing.c,
+Copyright (c) 2011 Auerhaus Development, LLC, released under the Do What The
+Fuck You Want To Public License, Version 2 (http://www.wtfpl.net/).
+
+The geometry in Sources/StackGeometry is derived from SCStackViewController,
+Copyright (c) 2013-2017 Stefan Ceriu, MIT licensed.
