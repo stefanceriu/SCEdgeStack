@@ -90,8 +90,9 @@ struct StackItemBoundary<Content: View>: View {
             .accessibilityHidden(!(placement?.isVisible ?? false))
             .environment(\.stackItem, key.flatMap { engine?.state(for: $0) })
             .layoutValue(key: StackTokenValue.self, value: token)
-            // Children draw under the root unless their layout stacks above it.
-            .zIndex(aboveRoot ? 1 : -1)
+            // Children draw under the root unless their layout stacks above it,
+            // and the one nearest the root draws above its deeper siblings.
+            .zIndex((aboveRoot ? 1 : -1) - Double(key?.index ?? 0) / 1000)
     }
 }
 #endif
