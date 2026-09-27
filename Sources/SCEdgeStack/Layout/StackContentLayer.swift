@@ -26,6 +26,8 @@ struct StackContentLayer<Root: View, Children: View>: View {
             root
                 .environment(\.layoutDirection, layoutDirection)
                 .modifier(StackEffectModifier(effect: resolution.root.effect))
+                .environment(\.stackRoot, engine.rootState)
+                .environment(\.stackItem, engine.rootState)
                 .layoutValue(key: StackIsRootValue.self, value: true)
         }
         // The engine resolves leading and trailing itself and solves in

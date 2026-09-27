@@ -55,4 +55,30 @@ enum Bridge {
     }
 }
 
+/// Counts writes to an observable placement. Re-arming is asynchronous, which
+/// is fine for asserting that *no* write happened: the first one is caught.
+@MainActor
+final class PlacementWriteCounter {
+    private final class Box: @unchecked Sendable { var value = 0 }
+
+    private let box = Box()
+    private let state: StackItemState
+
+    var writes: Int { box.value }
+
+    init(watching state: StackItemState) {
+        self.state = state
+        arm()
+    }
+
+    private func arm() {
+        withObservationTracking {
+            _ = state.placement
+        } onChange: { [weak self, box] in
+            box.value += 1
+            Task { @MainActor in self?.arm() }
+        }
+    }
+}
+
 #endif

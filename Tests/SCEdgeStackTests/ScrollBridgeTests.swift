@@ -149,6 +149,51 @@ struct RotationTests {
     }
 }
 
+@MainActor
+@Suite("Update volume")
+struct UpdateVolumeTests {
+
+    /// The whole 120 Hz story in one assertion: sweeping the offset must not
+    /// write to a child whose placement did not change.
+    @Test func aFullSweepDoesNotTouchAnUnchangedChild() {
+        let harness = Bridge.harness(edge: .leading, extents: [100, 100])
+        let far = harness.engine.state(for: harness.key(1))
+
+        // Drag across the first child only; the second never moves.
+        harness.engine.apply(offset: CGPoint(x: -1, y: 0))
+        let counter = PlacementWriteCounter(watching: far)
+        for tick in 1...120 {
+            harness.engine.apply(offset: CGPoint(x: -CGFloat(tick) * 100 / 120, y: 0))
+        }
+        #expect(counter.writes == 0)
+    }
+
+    /// The pull API's backing store: the per-item observable the environment
+    /// carries has to actually receive the solve.
+    @Test func perItemStateReceivesTheSolve() {
+        let harness = Bridge.harness(extents: [200])
+        let state = harness.engine.state(for: harness.key(0))
+        #expect(state.visibleFraction == 0)
+
+        harness.engine.apply(offset: CGPoint(x: -200, y: 0))
+        #expect(state.visibleFraction == 1)
+        #expect(state.isVisible)
+
+        harness.engine.apply(offset: .zero)
+        #expect(state.visibleFraction == 0)
+    }
+
+    @Test func repeatingAnOffsetIsANoOp() {
+        let harness = Bridge.harness(extents: [200])
+        harness.engine.apply(offset: CGPoint(x: -50, y: 0))
+        let near = harness.engine.state(for: harness.key(0))
+
+        let counter = PlacementWriteCounter(watching: near)
+        for _ in 0..<120 { harness.engine.apply(offset: CGPoint(x: -50, y: 0)) }
+        #expect(counter.writes == 0)
+    }
+}
+
 @Suite("Configuration changes")
 @MainActor
 struct ConfigurationChangeTests {
@@ -165,5 +210,17 @@ struct ConfigurationChangeTests {
         #expect(harness.engine.resolution.items[harness.key(0)]?.frame.minX == -100, "sliding: the child tracks the offset")
     }
 
+    @Test func anUnchangedLayoutDoesNotResolveAgain() {
+        let harness = Bridge.harness(extents: [200])
+        harness.scrollView.contentOffset = CGPoint(x: -100, y: 0)
+        harness.coordinator.scrollViewDidScroll(harness.scrollView)
+        let counter = PlacementWriteCounter(watching: harness.engine.state(for: harness.key(0)))
+
+        var configuration = harness.engine.configuration
+        configuration.pagingEnabled.toggle()
+        harness.engine.configuration = configuration
+
+        #expect(counter.writes == 0)
+    }
 }
 #endif

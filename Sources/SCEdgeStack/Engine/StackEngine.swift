@@ -35,12 +35,22 @@ final class StackEngine {
     @ObservationIgnored var layoutDirection = StackLayoutDirection.leftToRight
     @ObservationIgnored weak var scrollController: StackScrollCoordinator?
 
+    /// Keyed by child, not position, so a state follows its child through a
+    /// reorder.
+    @ObservationIgnored private var states: [StackItemID: StackItemState] = [:]
+    /// By child rather than position, so a re-measure does not re-announce
+    /// children that stayed visible, and a removed child is still announced.
+    @ObservationIgnored private var visibleIDs: Set<StackItemID> = []
     @ObservationIgnored private var ids: [StackItemKey: StackItemID] = [:]
     @ObservationIgnored private var keys: [StackItemID: StackItemKey] = [:]
     @ObservationIgnored private var keysByToken: [StackItemToken: StackItemKey] = [:]
     @ObservationIgnored private var descriptors: [StackItemDescriptor] = []
     @ObservationIgnored private var activeEdge: StackPhysicalEdge?
     @ObservationIgnored private var isResolving = false
+
+    @ObservationIgnored let rootState = StackItemState(
+        id: .root, placement: StackPlacement(visibleFraction: 1, isVisible: true)
+    )
 
     static let log = Logger(subsystem: "com.stefanceriu.SCEdgeStack", category: "stack")
 
@@ -62,6 +72,21 @@ final class StackEngine {
         activeEdge = StackOcclusionSolver.activeEdge(for: offset) ?? activeEdge
 
         if solved != resolution { resolution = solved }
+
+        for descriptor in descriptors {
+            guard let placement = solved.items[descriptor.key] else { continue }
+            state(for: descriptor.key).update(placement)
+        }
+        rootState.update(solved.root)
+
+        configuration.onOffsetChange?(offset)
+
+        let nowVisible = Set(solved.visibleItems.map(id(for:)))
+        if let report = configuration.onVisibilityChange {
+            for id in nowVisible.subtracting(visibleIDs) { report(id, true) }
+            for id in visibleIDs.subtracting(nowVisible) { report(id, false) }
+        }
+        visibleIDs = nowVisible
     }
 
     /// Re-solves at the current offset, after the spec changed underneath us.
@@ -92,6 +117,7 @@ final class StackEngine {
         ids = Dictionary(uniqueKeysWithValues: descriptors.map { ($0.key, $0.id) })
         keysByToken = Dictionary(descriptors.map { ($0.token, $0.key) }, uniquingKeysWith: { first, _ in first })
         keys = Dictionary(descriptors.map { ($0.id, $0.key) }, uniquingKeysWith: { first, _ in first })
+        states = states.filter { keys[$0.key] != nil }
 
         spec = StackSpec(containerSize: containerSize, edges: edges)
         diagnoseAxes()
@@ -128,6 +154,14 @@ final class StackEngine {
 
     // MARK: - Addressing
 
+    func state(for key: StackItemKey) -> StackItemState {
+        let id = id(for: key)
+        if let existing = states[id] { return existing }
+        let created = StackItemState(id: id)
+        states[id] = created
+        return created
+    }
+
     func id(for key: StackItemKey) -> StackItemID {
         ids[key] ?? .position(declarative(key.edge), key.index)
     }
@@ -140,6 +174,10 @@ final class StackEngine {
         if let key = keys[id] { return key }
         guard case let .position(edge, index) = id.storage else { return nil }
         return StackItemKey(edge: edge.resolved(layoutDirection), index: index)
+    }
+
+    func steps(for key: StackItemKey) -> [StackNavigationStep] {
+        descriptors.first { $0.key == key }?.steps ?? []
     }
 
     private func declarative(_ physical: StackPhysicalEdge) -> StackEdge {

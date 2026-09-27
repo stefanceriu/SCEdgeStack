@@ -19,6 +19,10 @@ public struct StackConfiguration {
     public var dragActivation: StackDragActivation = .anywhere
     public var simultaneousGestures = false
 
+    var onOffsetChange: (@MainActor (CGPoint) -> Void)?
+    var onVisibilityChange: (@MainActor (StackItemID, Bool) -> Void)?
+    var onStep: (@MainActor (StackItemID, StackNavigationStep) -> Void)?
+
     public init() {}
 
     func layout(for edge: StackEdge) -> any StackLayout {
@@ -63,6 +67,21 @@ public extension View {
     /// Let the stack's pan run alongside other gesture recognisers.
     func stackSimultaneousGestures(_ enabled: Bool) -> some View {
         transformEnvironment(\.stackConfiguration) { $0.simultaneousGestures = enabled }
+    }
+
+    /// Fires on every scroll tick, synchronously from the resolve pass.
+    func onStackOffsetChange(_ action: @escaping @MainActor (CGPoint) -> Void) -> some View {
+        transformEnvironment(\.stackConfiguration) { $0.onOffsetChange = action }
+    }
+
+    /// Fires only when a child crosses in or out of visibility.
+    func onStackVisibilityChange(_ action: @escaping @MainActor (StackItemID, Bool) -> Void) -> some View {
+        transformEnvironment(\.stackConfiguration) { $0.onVisibilityChange = action }
+    }
+
+    /// Fires when the stack settles on a navigation step.
+    func onStackStep(_ action: @escaping @MainActor (StackItemID, StackNavigationStep) -> Void) -> some View {
+        transformEnvironment(\.stackConfiguration) { $0.onStep = action }
     }
 }
 #endif

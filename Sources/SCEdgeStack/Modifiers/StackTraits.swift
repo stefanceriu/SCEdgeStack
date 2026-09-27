@@ -87,6 +87,8 @@ struct StackItemBoundary<Content: View>: View {
         content
             .environment(\.layoutDirection, engine?.layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight)
             .modifier(StackEffectModifier(effect: placement?.effect ?? .identity))
+            .accessibilityHidden(!(placement?.isVisible ?? false))
+            .environment(\.stackItem, key.flatMap { engine?.state(for: $0) })
             .layoutValue(key: StackTokenValue.self, value: token)
             // Children draw under the root unless their layout stacks above it.
             .zIndex(aboveRoot ? 1 : -1)

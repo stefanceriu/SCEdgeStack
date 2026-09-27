@@ -20,6 +20,7 @@ final class StackScrollCoordinator: NSObject, UIScrollViewDelegate {
     var hostingController: UIViewController?
 
     private var appliedInsets: StackInsets?
+    private var pendingStep: StackNavigationStep?
     private var restoreTarget: (key: StackItemKey, fraction: Double)?
 
     init(engine: StackEngine) {
@@ -141,6 +142,7 @@ final class StackScrollCoordinator: NSObject, UIScrollViewDelegate {
         ) else { return }
 
         targetContentOffset.pointee = adjusted.offset
+        pendingStep = adjusted.step
     }
 
     func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
@@ -158,6 +160,30 @@ final class StackScrollCoordinator: NSObject, UIScrollViewDelegate {
 
     private func settle() {
         updateInsets()
+        reportStep()
+    }
+
+    private func reportStep() {
+        let pending = pendingStep
+        pendingStep = nil
+        guard let report = engine.configuration.onStep else { return }
+
+        // Only a stack resting on a step reports one; between steps, which
+        // paging off allows, there is nothing to report.
+        let anchor = engine.resolution.anchor
+        guard let step = pending ?? (anchor.map(settledStep) ?? .folded) else { return }
+        report(anchor.map { engine.id(for: $0) } ?? .root, step)
+    }
+
+    /// The step of `key` the stack is resting on. Used when no pagination
+    /// picked one -- a drag clamped against the live range, say.
+    private func settledStep(for key: StackItemKey) -> StackNavigationStep? {
+        let offset = engine.resolution.contentOffset
+        let candidates = [StackNavigationStep.folded] + engine.steps(for: key) + [.full]
+        return candidates.first { candidate in
+            guard let at = engine.offset(for: key, at: candidate) else { return false }
+            return abs(at.x - offset.x) <= 0.5 && abs(at.y - offset.y) <= 0.5
+        }
     }
 }
 #endif

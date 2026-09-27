@@ -49,14 +49,20 @@ public struct EdgeStack<Root: View, Children: View>: View {
         let engine = owned
         let direction: StackLayoutDirection = layoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
 
-        StackScrollHost(
-            engine: engine,
-            configuration: configuration,
-            layoutDirection: direction,
-            content: StackContentLayer(engine: engine, root: root, children: children)
-                .environment(\.layoutDirection, layoutDirection)
-        )
-        .ignoresSafeArea()
+        // The stack's geometry lives in a safe-area-free space, so the host
+        // ignores the safe area -- but the ambient insets are read here, one
+        // level up where they are still visible, and republished to children.
+        GeometryReader { proxy in
+            StackScrollHost(
+                engine: engine,
+                configuration: configuration,
+                layoutDirection: direction,
+                content: StackContentLayer(engine: engine, root: root, children: children)
+                    .environment(\.stackSafeAreaInsets, proxy.safeAreaInsets)
+                    .environment(\.layoutDirection, layoutDirection)
+            )
+            .ignoresSafeArea()
+        }
     }
 }
 #endif
