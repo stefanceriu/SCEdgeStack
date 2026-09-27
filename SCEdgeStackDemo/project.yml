@@ -1,0 +1,32 @@
+name: SCEdgeStackDemo
+options:
+  bundleIdPrefix: com.stefanceriu
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+packages:
+  SCEdgeStack:
+    path: ../
+targets:
+  SCEdgeStackDemo:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    dependencies:
+      - package: SCEdgeStack
+        product: SCEdgeStack
+    settings:
+      base:
+        SWIFT_VERSION: "6.0"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        TARGETED_DEVICE_FAMILY: "1,2"
+schemes:
+  SCEdgeStackDemo:
+    build:
+      targets:
+        SCEdgeStackDemo: all
+    run:
+      config: Debug
