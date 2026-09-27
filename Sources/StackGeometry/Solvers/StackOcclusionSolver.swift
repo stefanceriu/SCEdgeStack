@@ -79,7 +79,7 @@ public enum StackOcclusionSolver {
 
                     var fraction = 0.0
                     if isVisible {
-                        let total = edge.axis.extent(of: adjusted.size)
+                        let total = edge.axis.extent(of: frame.size)
                         fraction = total > 0 ? quantise(extent / total) : 0
 
                         remainder = remainder.subtracting(remainder.intersection(adjusted), edge: chopEdge)

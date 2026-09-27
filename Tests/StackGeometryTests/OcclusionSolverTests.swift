@@ -140,6 +140,23 @@ struct OcclusionSolverTests {
         #expect(previous.allSatisfy { $0 == 1 })
     }
 
+    /// Overlapping layouts must measure against the whole child, not the part
+    /// left after its siblings are chopped off.
+    @Test(arguments: StackPhysicalEdge.allCases, [false, true])
+    func overlappingLayoutsReportTheirOwnFraction(edge: StackPhysicalEdge, parallax: Bool) {
+        let spec = Fixture.spec(
+            edge,
+            sizes: (0..<2).map { _ in Fixture.child(100, on: edge) },
+            layout: parallax ? ParallaxStackLayout() : SlidingStackLayout()
+        )
+        let early = StackOcclusionSolver.resolve(spec: spec, contentOffset: edge.axis.point(50 * edge.unfoldingSign))
+        #expect(early.items[StackItemKey(edge: edge, index: 1)]?.visibleFraction == 0)
+
+        let resolution = StackOcclusionSolver.resolve(spec: spec, contentOffset: edge.axis.point(150 * edge.unfoldingSign))
+        #expect(resolution.items[StackItemKey(edge: edge, index: 0)]?.visibleFraction == 1)
+        #expect(resolution.items[StackItemKey(edge: edge, index: 1)]?.visibleFraction == 0.5)
+    }
+
     @Test(arguments: StackPhysicalEdge.allCases)
     func reversedStackUncoversTheNearestChildFirst(edge: StackPhysicalEdge) {
         let spec = Fixture.spec(
