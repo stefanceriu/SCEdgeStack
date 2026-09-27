@@ -9,6 +9,11 @@ percentage-based navigation steps with directional blocking, thirty easing
 curves for programmatic navigation, and occlusion-aware visibility reporting.
 Not a `NavigationSplitView` clone.
 
+| Sheet | Sidebars | Gallery | Lab |
+|:-:|:-:|:-:|:-:|
+| <img src=".github/media/sheet.gif" width="200" alt="A Maps-style sheet moving between peek, half and full detents"> | <img src=".github/media/sidebars.gif" width="200" alt="A mail inbox shrinking into a card as a sidebar and an inspector open"> | <img src=".github/media/gallery.gif" width="200" alt="Photo cards folding down in 3D one after another"> | <img src=".github/media/lab.gif" width="200" alt="Panels revealed on different edges with live offset and callback readouts"> |
+| Detents are navigation steps, with a floor it never folds past. | Two edges, parallax, and a root that shrinks into a card. | Cards folding in 3D, unfolded along any easing curve. | Every layout, edge and curve, with the callbacks live. |
+
 - iOS 18+, SwiftPM, Swift 6 language mode, zero dependencies.
 - SwiftUI-only public API. The `UIScrollView` is an implementation detail and is
   never exposed.
